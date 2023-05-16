@@ -35,8 +35,14 @@ DEFAULT_TEMPLATE_ID = 1
 ENGLISH_US = 'en_US'
 ENGLISH_GB = 'en_GB'
 
+METADATA_GENERATED_SPACE_KEY = 'DEMOCASEPRODDIR'
 
-@print_timing('Creating dataset started')
+def _space_exists(rest_client, space_key):
+    api_url_get_space = f'{rest_client.host}/rest/api/space?spaceKey={space_key}'
+    response = rest_client.get(api_url_get_space, f'Error getting space by key {space_key}')
+    return len(response.json()['results']) == 1
+
+
 def __create_data_set(rest_client, rpc_client):
     dataset = dict()
     dataset[USERS] = __get_users(rest_client, rpc_client, CONFLUENCE_SETTINGS.concurrency)
@@ -89,6 +95,17 @@ def __get_users(confluence_api, rpc_api, count):
 
 @print_timing('Getting pages')
 def __get_pages(confluence_api, count):
+    cql_query = ('type=page'
+                 ' and title !~ JMeter'  # filter out pages created by JMeter
+                 ' and title !~ Selenium'  # filter out pages created by Selenium
+                 ' and title !~ locust'  # filter out pages created by locust
+                 ' and title !~ Home'  # filter out space Home pages
+                 ' and title !~ PMC') # filter out pages that contain the PMC data for clean test separation
+    # exclude space created by Metadata for clean test separation. But only if it exists otherwise Confluence
+    # rest API runs into an error.
+    if _space_exists(confluence_api, METADATA_GENERATED_SPACE_KEY):
+        cql_query += f' and space != {METADATA_GENERATED_SPACE_KEY}'
+
     pages_templates = [i for sublist in DATASET_PAGES_TEMPLATES.values() for i in sublist]
     pages_templates_count = len(pages_templates)
     pages_per_template = int(count / pages_templates_count) if count > pages_templates_count else 1
@@ -99,23 +116,14 @@ def __get_pages(confluence_api, count):
         for template_id, pages_marks in DATASET_PAGES_TEMPLATES.items():
             for mark in pages_marks:
                 pages = confluence_api.get_content_search(
-                    0, pages_per_template, cql='type=page'
-                                               ' and title !~ JMeter'  # filter out pages created by JMeter
-                                               ' and title !~ Selenium'  # filter out pages created by Selenium
-                                               ' and title !~ locust'  # filter out pages created by locust
-                                               ' and title !~ Home'  # filter out space Home pages
-                                               f' and text ~ {mark}')
+                    0, pages_per_template, cql=f'{cql_query} and text ~ {mark}')
                 for page in pages:
                     page['template_id'] = template_id
                 total_pages.extend(pages)
 
     else:
         total_pages = confluence_api.get_content_search(
-            0, count, cql='type=page'
-                          ' and title !~ JMeter'  # filter out pages created by JMeter
-                          ' and title !~ Selenium'  # filter out pages created by Selenium
-                          ' and title !~ locust'  # filter out pages created by locust
-                          ' and title !~ Home')  # filter out space Home pages
+            0, count, cql_query)
         for page in total_pages:
             page['template_id'] = DEFAULT_TEMPLATE_ID
     if not total_pages:
@@ -138,6 +146,9 @@ def __get_custom_pages(confluence_api, count, cql):
 
 @print_timing('Getting blogs')
 def __get_blogs(confluence_api, count):
+    cql_query=('type=blogpost'
+              ' and title !~ Performance'
+              ' and text !~ BLOG_10')  # filter out too heavy blog post page type
     blogs_templates = [i for sublist in DATASET_BLOGS_TEMPLATES.values() for i in sublist]
     blogs_templates_count = len(blogs_templates)
     blogs_per_template = int(count / blogs_templates_count) if count > blogs_templates_count else 1
@@ -148,16 +159,13 @@ def __get_blogs(confluence_api, count):
         for template_id, blogs_marks in DATASET_BLOGS_TEMPLATES.items():
             for mark in blogs_marks:
                 blogs = confluence_api.get_content_search(
-                    0, blogs_per_template, cql='type=blogpost'
-                                               ' and title !~ Performance'
-                                               f' and text ~ {mark}')
+                    0, blogs_per_template, cql=f'{cql_query} and text ~ {mark}')
                 for blog in blogs:
                     blog['template_id'] = template_id
                 total_blogs.extend(blogs)
     else:
         total_blogs = confluence_api.get_content_search(
-            0, count, cql='type=blogpost'
-                          ' and title !~ Performance')
+            0, count, cql_query)
         for blog in total_blogs:
             blog['template_id'] = DEFAULT_TEMPLATE_ID
 

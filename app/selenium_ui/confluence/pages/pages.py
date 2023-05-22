@@ -5,7 +5,6 @@ from selenium_ui.base_page import BasePage
 from selenium_ui.confluence.pages.selectors import UrlManager, LoginPageLocators, AllUpdatesLocators, PopupLocators,\
     PageLocators, DashboardLocators, TopPanelLocators, EditorLocators, LogoutLocators
 
-
 class Login(BasePage):
     page_url = LoginPageLocators.login_page_url
     page_loaded_selector = LoginPageLocators.login_button

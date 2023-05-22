@@ -27,6 +27,9 @@ from util.project_paths import JIRA_DATASET_ISSUES, JIRA_DATASET_JQLS, JIRA_DATA
     JSM_DATASET_SERVICE_DESKS_L, JSM_DATASET_SERVICE_DESKS_M, JSM_DATASET_SERVICE_DESKS_S, JSM_DATASET_CUSTOM_ISSUES,\
     JSM_DATASET_INSIGHT_SCHEMAS, JSM_DATASET_INSIGHT_ISSUES, BAMBOO_USERS, BAMBOO_BUILD_PLANS
 
+import util.pmc.constants as pmc_constants
+import util.pmc.paths as pmc_paths
+
 SCREEN_WIDTH = 1920
 SCREEN_HEIGHT = 1080
 
@@ -76,6 +79,13 @@ class Dataset:
             self.dataset["blogs"] = self.__read_input_file(CONFLUENCE_BLOGS)
             self.dataset["users"] = self.__read_input_file(CONFLUENCE_USERS)
             self.dataset["custom_pages"] = self.__read_input_file(CONFLUENCE_CUSTOM_PAGES)
+            # add PMC related data to the datasets
+            for pmc_macro_name in pmc_constants.MACRO_NAMES:
+                self.dataset[pmc_macro_name] = self.__read_input_file(pmc_paths.get_macro_csv_file(pmc_macro_name))
+            self.dataset[pmc_constants.COMMENT_AGGREGATION_DATA] = self.__read_input_file(
+                pmc_paths.get_comment_aggregation_macro_data_csv_file())
+            self.dataset[pmc_constants.PROCESS_SEARCH_TERMS] = self.__read_input_file(
+                pmc_paths.get_process_search_terms_file())
         return self.dataset
 
     def bitbucket_dataset(self):

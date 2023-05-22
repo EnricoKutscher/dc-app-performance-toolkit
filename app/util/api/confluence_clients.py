@@ -120,6 +120,24 @@ class ConfluenceRestClient(RestClient):
 
         return search_results_list
 
+    def get_space_by_key(self, space_key):
+        api_url_get_space = f'{self.host}/rest/api/space?spaceKey={space_key}'
+        response = self.get(api_url_get_space, f"Request for space with key {space_key} failed")
+        results = response.json()['results']
+        if len(results) == 0:
+            return None
+        return results[0]
+
+    def assert_space_exists(self, space_key, error_message=None):
+        space = self.get_space_by_key(space_key)
+        if not space:
+            error_message = error_message if error_message else f'Space with key {space_key} does not exist'
+            raise SystemExit(error_message)
+
+    def create_page(self, page_data):
+        api_url_create_content = f'{self.host}/rest/api/content'
+        self.post(api_url_create_content, body=page_data, error_msg="Error creating page")
+
     @retry()
     def is_remote_api_enabled(self):
         api_url = f'{self.host}/rpc/xmlrpc'

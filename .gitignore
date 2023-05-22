@@ -2,6 +2,7 @@
 outputs/
 **/results/
 **/datasets/*/*.csv
+**/datasets/*/*.json
 *venv*
 .DS_Store
 *.swp

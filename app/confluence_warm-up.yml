@@ -1,0 +1,32 @@
+# Before doing a real test run it is useful to do a "warm-up" for the environment (new cluster nodes)
+# When doing a run based on this yml, only read operations to fill caches are executed and the warm-up has a reduced run-time (test_duration)
+#
+# !!! Important Note:
+# This warm-up configuration contains the call for the data preparation script (confluence_prepare_data.py).
+---
+settings:
+  artifacts-dir: results/confluence/warm-up_%Y-%m-%d_%H-%M-%S
+  aggregator: consolidator
+  verbose: false
+  check-updates: false    # disable bzt check for updates
+  env:
+    load_executor: locust           # jmeter and locust are supported. jmeter by default.
+    concurrency: 200                # number of concurrent virtual users for jmeter or locust scenario
+    test_duration: 8m
+    ramp-up: 3m                     # time to spin all concurrent users
+    total_actions_per_hour: 20000
+    allow_analytics: No            # Allow sending basic run analytics to Atlassian. These analytics help us to understand how the tool is being used and help us to continue to invest in this tooling. For more details please see our README.
+services:
+  - module: shellexec
+    prepare:
+      - python util/pre_run/environment_checker.py
+      - python util/data_preparation/confluence_prepare_data.py
+execution:
+  - scenario: ${load_executor}
+    executor: ${load_executor}
+    concurrency: ${concurrency}
+    hold-for: ${test_duration}
+    ramp-up: ${ramp-up}
+scenarios:
+  locust:
+    script: locustio/confluence/locustfile_warm_up.py
